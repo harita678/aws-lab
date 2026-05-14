@@ -10,12 +10,14 @@ import socket
 
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
+from typing import Optional
 
 # create the FasAPI App
 
 app = FastAPI(title="AWS Lab - Fast API on EC2", description="Mini project", version="1.0.0")
 
 START_TIME = datetime.now()
+users_db = []
 
 # GET /  — service info (root endpoint)
 
@@ -77,3 +79,81 @@ def calculate(req: CalcRequest):
         "b": req.b,
         "result": result,
     }
+
+@app.get("/greet/{name}")
+def greet_person(name:str):
+    return{
+        "message": f"Hello, {name}",
+        "length": len(name),
+    }
+@app.get("/search")
+def search(q: str = "", limit: int = 10):
+    return{
+        "query_received": q,
+        "limit_received": limit,
+        "meesage": f"you searched for '{q}' with limit '{limit}'",
+    }
+
+class UserCreate(BaseModel):
+    name: str
+    email: str
+    password: str
+
+class UserResponse(BaseModel):
+    id: int
+    name: str
+    email: str
+
+class UserUpdate(BaseModel):
+    name: Optional[str] = None
+    email: Optional[str] = None
+    password: Optional[str] = None
+
+@app.post("/users", response_model=UserResponse)
+def create_user(user: UserCreate):
+    new_id = len(users_db) + 1
+    user_record = {
+        "id": new_id,
+        "name": user.name,
+        "email": user.email,
+        "password": user.password,}
+
+    users_db.append(user_record)
+    print(user_record)
+    return user_record
+
+@app.get("/users/{user_id}", response_model=UserResponse)
+def get_user(user_id: int):
+
+    for user in users_db:
+        if user['id'] == user_id:
+            return user
+    raise HTTPException(
+        status_code=404,
+        detail=f"User with id {user_id} not found",
+    )
+
+
+
+@app.put("/users/{user_id}", response_model=UserResponse)
+def update_user(user_id: int, updated_user: UserUpdate):
+
+    for user in users_db:
+        if user["id"] == user_id:
+            if updated_user.name is not None:
+                user["name"] = updated_user.name
+            if updated_user.email is not None:
+                user["email"] = updated_user.email
+            if updated_user.password is not None:
+                user["password"] = updated_user.password
+            return user
+    raise HTTPException(status_code= 404, detail=f"user with id {user_id} not found")
+
+@app.delete("/users/{user_id}")
+def delete_user(user_id: int):
+    for user in users_db:
+        if user["id"] == user_id:
+            users_db.remove(user)
+            return{"message: user with id '{user_id}' is removed "}
+    raise HTTPException (status_code=404, detail=f"USER WITH {user_id} not found")
+        
