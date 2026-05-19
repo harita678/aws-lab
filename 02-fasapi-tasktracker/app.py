@@ -18,6 +18,11 @@ class TaskResponse(BaseModel):
     status: str
     created_at: datetime
 
+class TaskListResponse(BaseModel):
+    message: str
+    total: int
+    all_tasks: List[TaskResponse]
+
 class TaskUpdate(BaseModel):
     
     title: Optional[str] = None
@@ -25,21 +30,26 @@ class TaskUpdate(BaseModel):
     status: Optional[str] = None
     
 
-@app.post("/tasks", response_model= TaskResponse)
+@app.post("/tasks", response_model= TaskResponse, status_code=201)
 def create_task(tasks: TaskCreate):
     task = {
         "id": len(task_db)+1,
     "title": tasks.title,
     "description": tasks.description,
     "status": tasks.status, 
-    "created_at": datetime.now()
+    "created_at": datetime.now(),
+    #"internal_secret": "this should never reach the client" 
     }
     task_db.append(task)
     return task
     
-@app.get("/tasks", response_model= List[TaskResponse])
+@app.get("/tasks", response_model= TaskListResponse)
 def all_tasks():
-    return task_db
+    return {
+        "message": "All tasks retrieved successfully",
+        "total": len(task_db),
+        "all_tasks": task_db
+        }
 
 @app.get("/tasks/{task_id}", response_model= TaskResponse)
 def get_task_by_id(task_id: int):
@@ -49,12 +59,11 @@ def get_task_by_id(task_id: int):
         
     raise HTTPException(status_code=404, detail=f"Task with task id '{task_id} not found")
 
-@app.delete("/tasks/{task_id}")
+@app.delete("/tasks/{task_id}", status_code=204)
 def delete_task(task_id: int):
     for task in task_db:
         if task["id"] == task_id:
             task_db.remove(task)
-            return f"Task with  task id {task_id} deleted successfully"
 
     raise HTTPException(status_code=404,detail=f"Task with task id '{task_id}' not found")
 
