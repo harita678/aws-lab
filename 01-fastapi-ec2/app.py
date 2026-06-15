@@ -7,6 +7,7 @@ A small but real API: info, health check, system metadata, and a calculator.
 from datetime import datetime
 import platform
 import socket
+import crud
 
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
@@ -17,7 +18,7 @@ from typing import Optional
 app = FastAPI(title="AWS Lab - Fast API on EC2", description="Mini project", version="1.0.0")
 
 START_TIME = datetime.now()
-users_db = []
+
 
 # GET /  — service info (root endpoint)
 
@@ -111,49 +112,32 @@ class UserUpdate(BaseModel):
 
 @app.post("/users", response_model=UserResponse)
 def create_user(user: UserCreate):
-    new_id = len(users_db) + 1
-    user_record = {
-        "id": new_id,
-        "name": user.name,
-        "email": user.email,
-        "password": user.password,}
-
-    users_db.append(user_record)
-    print(user_record)
-    return user_record
+        new_user = crud.create_user(user.name, user.email, user.password)
+        return new_user
 
 @app.get("/users/{user_id}", response_model=UserResponse)
 def get_user(user_id: int):
 
-    for user in users_db:
-        if user['id'] == user_id:
-            return user
-    raise HTTPException(
-        status_code=404,
-        detail=f"User with id {user_id} not found",
-    )
-
+    user = crud.get_user(user_id)
+    if user is None:
+        raise HTTPException(status_code=404, detail=f"User {user_id} not found")
+    
+    return user
+    
 
 
 @app.put("/users/{user_id}", response_model=UserResponse)
 def update_user(user_id: int, updated_user: UserUpdate):
 
-    for user in users_db:
-        if user["id"] == user_id:
-            if updated_user.name is not None:
-                user["name"] = updated_user.name
-            if updated_user.email is not None:
-                user["email"] = updated_user.email
-            if updated_user.password is not None:
-                user["password"] = updated_user.password
-            return user
-    raise HTTPException(status_code= 404, detail=f"user with id {user_id} not found")
+    updated_user_data = crud.update_user(user_id, updated_user.name, updated_user.email, updated_user.password)
+    if updated_user_data is None:
+        raise HTTPException(status_code=404, detail=f"User {user_id} not found")
+    
+    return updated_user_data
 
 @app.delete("/users/{user_id}")
 def delete_user(user_id: int):
-    for user in users_db:
-        if user["id"] == user_id:
-            users_db.remove(user)
-            return{"message: user with id '{user_id}' is removed "}
-    raise HTTPException (status_code=404, detail=f"USER WITH {user_id} not found")
-        
+    deleted = crud.delete_user(user_id)
+    if not deleted:
+        raise HTTPException(status_code=404, detail=f"User {user_id} not found")
+    return {"message": f"User {user_id} deleted successfully"}
