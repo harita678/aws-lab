@@ -31,17 +31,17 @@ def create_test_run(test_run: TestRunRequest):
     s3_client.put_object(Bucket=BUCKET_NAME, Key=s3_key, Body=json_body)
     
     #After writing to S3 we need to put the message in SQS
-    #Creating SQS message
+    #1. Creating SQS message
     sqs_message={
         "ingestion_id":str(new_id),
         "s3_bucket":BUCKET_NAME,
         "s3_key":s3_key
     }
     
-    #Converting Dict to JSON string
+    #2. Converting Dict to JSON string
     sqs_message_body_string = json.dumps(sqs_message)
     
-    #Call sqs_client.send_message(...) to publish to SQS
+    #3. Call sqs_client.send_message(...) to publish to SQS
     sqs_client.send_message(QueueUrl=SQS_QUEUE_URL, MessageBody=sqs_message_body_string)
 
 
