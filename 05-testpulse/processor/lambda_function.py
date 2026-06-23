@@ -9,7 +9,7 @@ Architecture: Ingestor → S3 + SQS → Lambda (this) → RDS
 
 import json
 import boto3
-
+import db
 
 # ---------------------------------------------------------------------------
 # Lambda handler — entry point AWS invokes when SQS has a message
@@ -49,6 +49,22 @@ def lambda_handler(event, context):
 
     # Compute pass/fail summary
     summary = summarize_tests(test_data)
+
+    # Creating db connection from db.py
+    conn = None
+    try:
+        conn = db.create_db_connection()
+        db.insert_test_run(conn, test_data, summary)
+        db.insert_test_cases(conn, test_data)
+        conn.commit()
+    except Exception as e:
+        print(f"Database error: {e}")
+        if conn:
+            conn.rollback()  # undo any partial inserts
+        raise  # let Lambda know it failed → SQS retry
+    finally:
+        if conn:
+            conn.close()  # always close
 
     # Return success — AWS will mark the SQS message as processed
     # and remove it from the queue
