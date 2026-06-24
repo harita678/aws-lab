@@ -38,15 +38,17 @@ def lambda_handler(event, context):
     
     # Extract the S3 location of the actual test data
     # (Pointer pattern: SQS holds the pointer, S3 holds the payload)
+    ingestion_id = body["ingestion_id"]
     bucket_name = body["s3_bucket"]
     object_key = body["s3_key"]
 
+    print(f"Ingestion ID: {ingestion_id}")
     print(f"Bucket name: {bucket_name}")
     print(f"Object Key: {object_key}")
 
     # Fetch the actual test data from S3
     test_data = fetch_from_s3(bucket_name, object_key)
-
+    test_data["ingestion_id"] = ingestion_id
     # Compute pass/fail summary
     summary = summarize_tests(test_data)
 
@@ -54,7 +56,7 @@ def lambda_handler(event, context):
     conn = None
     try:
         conn = db.create_db_connection()
-        db.insert_test_run(conn, test_data, summary)
+        db.insert_test_runs(conn, test_data, summary)
         db.insert_test_cases(conn, test_data)
         conn.commit()
     except Exception as e:

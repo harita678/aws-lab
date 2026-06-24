@@ -1,8 +1,6 @@
 from dotenv import load_dotenv
 import os
 import psycopg2
-from lambda_function import fetch_from_s3, summarize_tests
-
 
 # Open a connection to RDS using credentials from .env
 def create_db_connection():
