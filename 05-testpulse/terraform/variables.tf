@@ -31,3 +31,35 @@ variable "ec2_role_name" {
   description = "Name of IAM Role that EC2 will assume"
   type        = string
 }
+
+variable "DB_HOST" {
+  description = "RDS DB_HOST for Lambda DB Connection"
+  type        = string
+
+}
+variable "DB_PORT" {
+  description = "RDS port for Lambda DB Connection"
+  type        = string
+
+}
+variable "DB_NAME" {
+  description = "RDS database name for Lambda DB Connection"
+  type        = string
+}
+variable "DB_USERNAME" {
+  description = "RDS user name for Lambda DB Connection"
+  type        = string
+
+}
+
+variable "DB_PASSWORD" {
+  description = "RDS Master passwrod for Lambda DB Connection"
+  type        = string
+  sensitive   = true
+
+}
+
+variable "lambda_function_name" {
+  description = "Name of the Testpulse Lambd processor function"
+  type        = string
+}
