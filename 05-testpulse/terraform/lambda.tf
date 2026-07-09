@@ -32,6 +32,7 @@ resource "aws_lambda_function" "processor" {
       DB_NAME     = var.DB_NAME
       DB_USERNAME = var.DB_USERNAME
       DB_PASSWORD = var.DB_PASSWORD #the sensitive variable!
+      AWS_EMF_ENVIRONMENT = "Lambda"
     }
   }
 

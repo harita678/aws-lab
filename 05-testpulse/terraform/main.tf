@@ -11,14 +11,14 @@ terraform {
       version = "~>5.0"
     }
   }
-#Below block Tells Terraform "stop storing state on the laptop; use that S3 bucket + native locking with use_lockfile"
-backend "s3" {
-    bucket         = "harita-testpulse-tfstate-2026"
-    key            = "testpulse/terraform.tfstate"
-    region         = "ca-central-1"
+  #Below block Tells Terraform "stop storing state on the laptop; use that S3 bucket + native locking with use_lockfile"
+  backend "s3" {
+    bucket = "harita-testpulse-tfstate-2026"
+    key    = "testpulse/terraform.tfstate"
+    region = "ca-central-1"
     #dynamodb_table = "harita-testpulse-tflock" 
-    use_lockfile   = true
-    encrypt        = true
+    use_lockfile = true
+    encrypt      = true
   }
 }
 
