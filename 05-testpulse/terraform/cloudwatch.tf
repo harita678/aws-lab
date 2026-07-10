@@ -42,3 +42,64 @@ resource "aws_cloudwatch_query_definition" "lambda_invocations" {
     | stats count(*) as total_runs
   QUERY
 }
+#=========================================================
+# DLQ depth alarm
+#========================================================= 
+resource "aws_cloudwatch_metric_alarm" "dlq_not_empty" {
+  alarm_name        = "TestPulse-DLQ-Has-Messages"
+  alarm_description = "A message failed 3 times and landed in the DLQ. Investigate."
+
+  namespace   = "AWS/SQS"
+  metric_name = "ApproximateNumberOfMessagesVisible"
+  dimensions = {
+    QueueName = aws_sqs_queue.ingestion_dlq.name
+  }
+
+  statistic           = "Maximum"
+  period              = 300
+  evaluation_periods  = 1
+  threshold           = 1
+  comparison_operator = "GreaterThanOrEqualToThreshold"
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions = [aws_sns_topic.alerts.arn]
+  ok_actions    = [aws_sns_topic.alerts.arn]
+
+  tags = {
+    Name        = "TestPulse DLQ Alarm"
+    Environment = var.environment
+    ManagedBy   = "Terraform"
+    Project     = "TestPulse"
+  }
+}
+
+#=========================================================
+# Alarm for Lambda when it throws errors
+#========================================================= 
+resource "aws_cloudwatch_metric_alarm" "lambda_throws_error" {
+  alarm_name        = "TestPulse-Lambda-Errors"
+  alarm_description = "The Lambda processor is throwing errors. Check CloudWatch Logs"
+
+  namespace   = "AWS/Lambda"
+  metric_name = "Errors"
+  dimensions = {
+    FunctionName = aws_lambda_function.processor.function_name
+  }
+
+  statistic           = "Sum"
+  period              = 300
+  evaluation_periods  = 1
+  threshold           = 1
+  comparison_operator = "GreaterThanOrEqualToThreshold"
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions = [aws_sns_topic.alerts.arn]
+  ok_actions    = [aws_sns_topic.alerts.arn]
+
+  tags = {
+    Name        = "TestPulse Lambda Alarm"
+    Environment = var.environment
+    ManagedBy   = "Terraform"
+    Project     = "TestPulse"
+  }
+}
