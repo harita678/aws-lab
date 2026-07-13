@@ -10,7 +10,7 @@ Architecture: Ingestor → S3 + SQS → Lambda (this) → RDS
 import json
 import boto3
 import db
-
+from aws_embedded_metrics import metric_scope
 # ---------------------------------------------------------------------------
 # Lambda handler — entry point AWS invokes when SQS has a message
 # ---------------------------------------------------------------------------
@@ -59,6 +59,7 @@ def lambda_handler(event, context):
         db.insert_test_runs(conn, test_data, summary)
         db.insert_test_cases(conn, test_data)
         conn.commit()
+        emit_metrics(summary)
     except Exception as e:
         print(f"Database error: {e}")
         if conn:
@@ -68,6 +69,7 @@ def lambda_handler(event, context):
         if conn:
             conn.close()  # always close
 
+    
     # Return success — AWS will mark the SQS message as processed
     # and remove it from the queue
     return {"statusCode": 200, "body": summary}
@@ -136,9 +138,21 @@ def summarize_tests(test_data):
     test_record = {
         "team": test_data["team"],
         "ci_run_id": test_data["ci_run_id"],
+        "project": test_data["project"],
         "total": total_tests,
         "passed": total_pass,
         "failed": total_fail,
     }
 
     return test_record
+
+@metric_scope
+def emit_metrics(test_summary, metrics):
+    metrics.set_namespace("TestPulse")
+    metrics.set_dimensions({"team": test_summary["team"], "project": test_summary["project"]})
+    metrics.put_metric("TestsPassed", test_summary["passed"], "Count")
+    metrics.put_metric("TestsFailed", test_summary["failed"], "Count")
+    metrics.put_metric("TestsTotal", test_summary["total"], "Count")
+
+
+

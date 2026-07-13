@@ -30,7 +30,7 @@ resource "aws_db_instance" "testpulse_db" {
 
   storage_encrypted = true
 
-  skip_final_snapshot = true
+  skip_final_snapshot   = true
   copy_tags_to_snapshot = true
   max_allocated_storage = 1000
 

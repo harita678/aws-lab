@@ -63,3 +63,9 @@ variable "lambda_function_name" {
   description = "Name of the Testpulse Lambd processor function"
   type        = string
 }
+
+variable "alert_emails" {
+  description = "Email addresses to receive TestPulse alerts"
+  type        = set(string)
+  sensitive   = true
+}
