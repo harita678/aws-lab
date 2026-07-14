@@ -67,5 +67,4 @@ variable "lambda_function_name" {
 variable "alert_emails" {
   description = "Email addresses to receive TestPulse alerts"
   type        = set(string)
-  sensitive   = true
 }
