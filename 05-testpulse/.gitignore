@@ -36,3 +36,6 @@ crash.log
 
 # Sensitive .tfvars (uncomment if needed)
 *.auto.tfvars
+
+# Test data sql queries for dashboard (only for local)
+seed.sql
