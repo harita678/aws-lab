@@ -3,6 +3,14 @@ from typing import Optional, Literal
 from uuid import UUID
 from datetime import datetime
 
+
+
+class TestCaseResponse(BaseModel):
+    name: str
+    status: str
+    duration_ms: int
+    critical: bool
+
 class TestRunDetailsResponse(BaseModel):
     ingestion_id: UUID
     team: str
@@ -12,12 +20,6 @@ class TestRunDetailsResponse(BaseModel):
     passed: int
     failed: int
     test_cases: list[TestCaseResponse] 
-
-class TestCaseResponse(BaseModel):
-    name: str
-    status: str
-    duration_ms: int
-    critical: bool
 
 class TestRunsResponse(BaseModel):
     ingestion_id: UUID

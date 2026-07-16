@@ -81,3 +81,31 @@ def test_run_detail_returns_404_for_missing_run(mock_get_run_by_id):
     assert response.status_code == 404
     assert response.json()["detail"] == "Run not found"
     mock_get_run_by_id.assert_called_once() # Here my test is still going to db.get_run_by_id() but in that function instead of making db connection and then returning the data instead it returns data that we provided at line# 76
+
+@patch("app.get_stats")
+def test_stats_returns_aggregates(mock_get_stats):
+    mock_get_stats.return_value = [
+        {
+            "team": "payments",
+            "run_count": 1,
+            "total_tests": 3,
+            "total_passed": 2,
+            "total_failed": 1,
+        },
+        {
+            "team": "search",
+            "run_count": 1,
+            "total_tests": 2,
+            "total_passed": 2,
+            "total_failed": 0,
+        },
+    ]
+
+    response = client.get("/stats")
+
+    assert response.status_code == 200
+    data = response.json()
+    assert len(data) == 2
+    assert data[0]["team"] == "payments"
+    assert data[0]["total_failed"] == 1
+    mock_get_stats.assert_called_once()
