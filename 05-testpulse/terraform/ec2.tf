@@ -15,7 +15,11 @@ resource "aws_instance" "ingestor" {
   vpc_security_group_ids = [aws_security_group.web.id]
 
   #User Data - it is available on EC2 instance
-  user_data = file("${path.module}/user-data-ingestor.sh")
+ user_data = templatefile("${path.module}/user-data-testpulse.sh.tftpl", {
+  db_password = var.DB_PASSWORD
+})
+
+user_data_replace_on_change = true
 
   tags = {
     Name        = "harita-testpulse-ingestor"

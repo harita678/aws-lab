@@ -1,16 +1,18 @@
 #!/bin/bash
 #
-# TestPulse Ingestor — EC2 User Data Bootstrap Script
+# TestPulse — EC2 User Data Bootstrap Script
+# Bootstraps BOTH services on this box: Ingestor (8000) + Dashboard (8001)
 # Runs ONCE on first boot of an Amazon Linux 2023 EC2 instance
 #
 
 # ---------------------------------------------------------------------------
 # Section 1: Logging — capture everything for debugging
+# Redirect everything printed by the rest of user-data.sh into /var/log/user-data.log.
 # ---------------------------------------------------------------------------
 exec > /var/log/user-data.log 2>&1
 set -x
 
-echo "===== TestPulse Ingestor bootstrap starting at $(date) ====="
+echo "===== TestPulse Ingestor & Bootstrap bootstrap starting at $(date) ====="
 
 # ---------------------------------------------------------------------------
 # Section 2: System update
@@ -35,19 +37,28 @@ dnf install -y git
 # ---------------------------------------------------------------------------
 echo "Cloning aws-lab repo..."
 cd /home/ec2-user
-sudo -u ec2-user git clone -b feat/testpulse-lambda-processor https://github.com/harita678/aws-lab.git
+sudo -u ec2-user git clone -b main https://github.com/harita678/aws-lab.git
 
 # ---------------------------------------------------------------------------
-# Section 6: Install Python dependencies
+# Section 6a: Install Python dependencies for Ingestor
 # ---------------------------------------------------------------------------
-echo "Installing Python dependencies..."
+echo "Installing Python dependencies for Ingestor..."
 cd /home/ec2-user/aws-lab/05-testpulse/ingestor
-sudo -u ec2-user pip3.12 install --user -r requirements.txt
+sudo -u ec2-user python3.12 -m venv venv
+sudo -u ec2-user venv/bin/pip install -r requirements.txt
 
 # ---------------------------------------------------------------------------
-# Section 7: Write .env file with config
+# Section 6b: Install Python dependencies for Dashboard
 # ---------------------------------------------------------------------------
-echo "Writing .env file..."
+echo "Installing Python dependencies for Dashboard..."
+cd /home/ec2-user/aws-lab/05-testpulse/dashboard
+sudo -u ec2-user python3.12 -m venv venv
+sudo -u ec2-user venv/bin/pip install -r requirements.txt
+
+# ---------------------------------------------------------------------------
+# Section 7a: Write .env file with config for Ingestor
+# ---------------------------------------------------------------------------
+echo "Writing Ingestor .env file..."
 cat > /home/ec2-user/aws-lab/05-testpulse/ingestor/.env << 'EOF'
 AWS_REGION=ca-central-1
 S3_BUCKET=harita-testpulse-raw-2026
@@ -55,10 +66,24 @@ SQS_QUEUE_URL=https://sqs.ca-central-1.amazonaws.com/951125265513/harita-testpul
 EOF
 chown ec2-user:ec2-user /home/ec2-user/aws-lab/05-testpulse/ingestor/.env
 
+
 # ---------------------------------------------------------------------------
-# Section 8: Create systemd service file
+# Section 7b: Write .env file with config for Dashobaord
 # ---------------------------------------------------------------------------
-echo "Creating systemd service..."
+echo "Writing Dashboard .env file..."
+cat > /home/ec2-user/aws-lab/05-testpulse/dashboard/.env << EOF
+DB_HOST=harita-testpulse-db.cdwkuouoeuue.ca-central-1.rds.amazonaws.com
+DB_PORT=5432
+DB_NAME=testpulse_db
+DB_USERNAME=testpulse_admin
+DB_PASSWORD=${db_password}
+EOF
+chown ec2-user:ec2-user /home/ec2-user/aws-lab/05-testpulse/dashboard/.env
+
+# ---------------------------------------------------------------------------
+# Section 8a: Create systemd service file for Ingestor; my app runs as a systemd service
+# ---------------------------------------------------------------------------
+echo "Creating Ingestor systemd service..."
 cat > /etc/systemd/system/testpulse-ingestor.service << 'EOF'
 [Unit]
 Description=TestPulse Ingestor (FastAPI)
@@ -69,7 +94,7 @@ Type=simple
 User=ec2-user
 WorkingDirectory=/home/ec2-user/aws-lab/05-testpulse/ingestor
 EnvironmentFile=/home/ec2-user/aws-lab/05-testpulse/ingestor/.env
-ExecStart=/home/ec2-user/.local/bin/uvicorn app:app --host 0.0.0.0 --port 8000
+ExecStart=/home/ec2-user/aws-lab/05-testpulse/ingestor/venv/bin/uvicorn app:app --host 0.0.0.0 --port 8000
 Restart=always
 RestartSec=10
 
@@ -78,7 +103,29 @@ WantedBy=multi-user.target
 EOF
 
 # ---------------------------------------------------------------------------
-# Section 9: Enable + start the service
+# Section 8b: Create systemd service file for Dashboard; my app runs as a systemd service
+# ---------------------------------------------------------------------------
+echo "Creating Dashboard systemd service..."
+cat > /etc/systemd/system/testpulse-dashboard.service << 'EOF'
+[Unit]
+Description=TestPulse Dashboard API (FastAPI)
+After=network.target
+
+[Service]
+Type=simple
+User=ec2-user
+WorkingDirectory=/home/ec2-user/aws-lab/05-testpulse/dashboard
+EnvironmentFile=/home/ec2-user/aws-lab/05-testpulse/dashboard/.env
+ExecStart=/home/ec2-user/aws-lab/05-testpulse/dashboard/venv/bin/uvicorn app:app --host 0.0.0.0 --port 8001
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+# ---------------------------------------------------------------------------
+# Section 9a: Ingestor Enable + start the service
 # ---------------------------------------------------------------------------
 echo "Enabling and starting Ingestor service..."
 systemctl daemon-reload
@@ -86,8 +133,23 @@ systemctl enable testpulse-ingestor
 systemctl start testpulse-ingestor
 
 # ---------------------------------------------------------------------------
-# Section 10: Done
+# Section 9b: Dashboard Enable + start the service
+# ---------------------------------------------------------------------------
+echo "Enabling and starting Dashboard service..."
+systemctl daemon-reload
+systemctl enable testpulse-dashboard
+systemctl start testpulse-dashboard
+
+# ---------------------------------------------------------------------------
+# Section 10a: Done; check service logs and app logs Ingestor
 # ---------------------------------------------------------------------------
 echo "===== TestPulse Ingestor bootstrap completed at $(date) ====="
 echo "Check status: systemctl status testpulse-ingestor"
-echo "Check logs:   journalctl -u testpulse-ingestor -f"
+echo "Check logs:   journalctl -u testpulse-ingestor -f" # to check service log and app log
+
+# ---------------------------------------------------------------------------
+# Section 10b: Done, check service logs and app logs Dashboard
+# ---------------------------------------------------------------------------
+echo "===== TestPulse Dahsboard bootstrap completed at $(date) ====="
+echo "Check status: systemctl status testpulse-dashboard"
+echo "Check logs:   journalctl -u testpulse-dashboard -f" # to check service log and app log
