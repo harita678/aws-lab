@@ -2,6 +2,9 @@ import os
 os.environ["AWS_ACCESS_KEY_ID"] = "testing"
 os.environ["AWS_SECRET_ACCESS_KEY"] = "testing"
 os.environ["AWS_DEFAULT_REGION"] = "ca-central-1"
+os.environ["AWS_REGION"] = "ca-central-1"
+os.environ["S3_BUCKET_NAME"] = "test-bucket"
+os.environ["SQS_QUEUE_URL"] = "https://sqs.ca-central-1.amazonaws.com/123456789012/test-queue"
 from fastapi.testclient import TestClient
 from moto import mock_aws
 import json, boto3
@@ -18,10 +21,10 @@ def test_health_return_healthy():
 @mock_aws
 def test_post_results_json_returns_202_on_valid_payload():
     s3_client = boto3.client('s3', region_name=os.environ["AWS_DEFAULT_REGION"])
-    s3_client.create_bucket(Bucket="harita-testpulse-raw-2026", CreateBucketConfiguration={"LocationConstraint": "ca-central-1"})
+    s3_client.create_bucket(Bucket=os.environ["S3_BUCKET_NAME"], CreateBucketConfiguration={"LocationConstraint": "ca-central-1"})
 
     sqs_client = boto3.client('sqs', region_name=os.environ["AWS_DEFAULT_REGION"])
-    sqs_client.create_queue(QueueName="harita-testpulse-ingestion-queue")
+    sqs_client.create_queue(QueueName="test-queue")
 
     payload = {
     "team": "callmetoremind",
@@ -52,10 +55,10 @@ def test_post_results_json_returns_202_on_valid_payload():
 @mock_aws
 def test_post_results_json_returns_422_on_valid_payload():
     s3_client = boto3.client('s3', region_name=os.environ["AWS_DEFAULT_REGION"])
-    s3_client.create_bucket(Bucket="harita-testpulse-raw-2026", CreateBucketConfiguration={"LocationConstraint": "ca-central-1"})
+    s3_client.create_bucket(Bucket=os.environ["S3_BUCKET_NAME"], CreateBucketConfiguration={"LocationConstraint": "ca-central-1"})
 
     sqs_client = boto3.client('sqs', region_name=os.environ["AWS_DEFAULT_REGION"])
-    sqs_client.create_queue(QueueName="harita-testpulse-ingestion-queue")
+    sqs_client.create_queue(QueueName="test-queue")
 
     payload = {
     "project": "backend-service",
