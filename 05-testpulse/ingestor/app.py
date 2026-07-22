@@ -7,7 +7,7 @@ import json
 
 from fastapi import FastAPI, status
 from models import TestRunRequest, TestRunResponse
-from aws_clients import s3_client, AWS_REGION, BUCKET_NAME, SQS_QUEUE_URL, sqs_client
+from aws_clients import s3_client, BUCKET_NAME, SQS_QUEUE_URL, sqs_client
 
 
 app = FastAPI(
