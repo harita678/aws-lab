@@ -1,4 +1,6 @@
 from datetime import datetime, timezone
+from dotenv import load_dotenv
+load_dotenv()
 from uuid import uuid4
 from http import HTTPStatus
 import json
@@ -6,7 +8,7 @@ import json
 from fastapi import FastAPI, status
 from models import TestRunRequest, TestRunResponse
 from aws_clients import s3_client, AWS_REGION, BUCKET_NAME, SQS_QUEUE_URL, sqs_client
-import boto3
+
 
 app = FastAPI(
     title="TestPulse Ingestor", 

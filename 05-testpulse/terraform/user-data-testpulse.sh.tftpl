@@ -12,7 +12,7 @@
 exec > /var/log/user-data.log 2>&1
 set -x
 
-echo "===== TestPulse Ingestor & Bootstrap bootstrap starting at $(date) ====="
+echo "===== TestPulse Ingestor & Dashboard Bootstrap  starting at $(date) ====="
 
 # ---------------------------------------------------------------------------
 # Section 2: System update
@@ -21,10 +21,17 @@ echo "Updating system packages..."
 dnf update -y
 
 # ---------------------------------------------------------------------------
-# Section 3: Install Python 3.12
+# Section 3: Install Docker (replaces Python — Python now lives in the images)
 # ---------------------------------------------------------------------------
-echo "Installing Python 3.12..."
-dnf install -y python3.12 python3.12-pip
+echo "Installing Docker..."
+dnf install -y docker
+
+# Start Docker and enable it so it survives reboots; herewe are asking systemctl to start the docker service
+
+systemctl enable --now docker
+
+# Let ec2-user run docker without sudo
+usermod -aG docker ec2-user
 
 # ---------------------------------------------------------------------------
 # Section 4: Install git
@@ -40,20 +47,20 @@ cd /home/ec2-user
 sudo -u ec2-user git clone -b main https://github.com/harita678/aws-lab.git
 
 # ---------------------------------------------------------------------------
-# Section 6a: Install Python dependencies for Ingestor
+# Section 6: Build both container images
+# Python, pip, and all dependencies now live INSIDE the images —
+# the box only needs Docker.
 # ---------------------------------------------------------------------------
-echo "Installing Python dependencies for Ingestor..."
-cd /home/ec2-user/aws-lab/05-testpulse/ingestor
-sudo -u ec2-user python3.12 -m venv venv
-sudo -u ec2-user venv/bin/pip install -r requirements.txt
 
-# ---------------------------------------------------------------------------
-# Section 6b: Install Python dependencies for Dashboard
-# ---------------------------------------------------------------------------
-echo "Installing Python dependencies for Dashboard..."
+# Image for Ingestor
+echo "Building Ingestor Image..."
+cd /home/ec2-user/aws-lab/05-testpulse/ingestor
+docker build -t testpulse-ingestor .
+
+# Image for Dashboard
+echo "Building Dashboard Image..."
 cd /home/ec2-user/aws-lab/05-testpulse/dashboard
-sudo -u ec2-user python3.12 -m venv venv
-sudo -u ec2-user venv/bin/pip install -r requirements.txt
+docker build -t testpulse-dashboard .
 
 # ---------------------------------------------------------------------------
 # Section 7a: Write .env file with config for Ingestor
@@ -61,14 +68,14 @@ sudo -u ec2-user venv/bin/pip install -r requirements.txt
 echo "Writing Ingestor .env file..."
 cat > /home/ec2-user/aws-lab/05-testpulse/ingestor/.env << 'EOF'
 AWS_REGION=ca-central-1
-S3_BUCKET=harita-testpulse-raw-2026
+S3_BUCKET_NAME=harita-testpulse-raw-2026
 SQS_QUEUE_URL=https://sqs.ca-central-1.amazonaws.com/951125265513/harita-testpulse-ingestion-queue
 EOF
 chown ec2-user:ec2-user /home/ec2-user/aws-lab/05-testpulse/ingestor/.env
 
 
 # ---------------------------------------------------------------------------
-# Section 7b: Write .env file with config for Dashobaord
+# Section 7b: Write .env file with config for Dashbaord
 # ---------------------------------------------------------------------------
 echo "Writing Dashboard .env file..."
 cat > /home/ec2-user/aws-lab/05-testpulse/dashboard/.env << EOF
@@ -81,49 +88,53 @@ EOF
 chown ec2-user:ec2-user /home/ec2-user/aws-lab/05-testpulse/dashboard/.env
 
 # ---------------------------------------------------------------------------
-# Section 8a: Create systemd service file for Ingestor; my app runs as a systemd service
+# Section 8a: Create systemd service file for Docker - Ingestor image; my app is containerized and the continer runs as a systemd service
 # ---------------------------------------------------------------------------
 echo "Creating Ingestor systemd service..."
 cat > /etc/systemd/system/testpulse-ingestor.service << 'EOF'
 [Unit]
-Description=TestPulse Ingestor (FastAPI)
-After=network.target
+Description=TestPulse Ingestor (container)
+After=network.target docker.service
+Requires=docker.service
 
 [Service]
 Type=simple
-User=ec2-user
-WorkingDirectory=/home/ec2-user/aws-lab/05-testpulse/ingestor
-EnvironmentFile=/home/ec2-user/aws-lab/05-testpulse/ingestor/.env
-ExecStart=/home/ec2-user/aws-lab/05-testpulse/ingestor/venv/bin/uvicorn app:app --host 0.0.0.0 --port 8000
 Restart=always
 RestartSec=10
+ExecStartPre=-/usr/bin/docker rm -f testpulse-ingestor
+ExecStart=/usr/bin/docker run --rm --name testpulse-ingestor \
+  -p 8000:8000 \
+  --env-file /home/ec2-user/aws-lab/05-testpulse/ingestor/.env \
+  testpulse-ingestor
+ExecStop=/usr/bin/docker stop testpulse-ingestor
 
 [Install]
 WantedBy=multi-user.target
 EOF
-
 # ---------------------------------------------------------------------------
-# Section 8b: Create systemd service file for Dashboard; my app runs as a systemd service
+# Section 8b: Create systemd service file for Docker - Dashboard image; my app is containerized and the continer runs as a systemd service
 # ---------------------------------------------------------------------------
 echo "Creating Dashboard systemd service..."
 cat > /etc/systemd/system/testpulse-dashboard.service << 'EOF'
 [Unit]
-Description=TestPulse Dashboard API (FastAPI)
-After=network.target
+Description=TestPulse Dashboard (container)
+After=network.target docker.service
+Requires=docker.service
 
 [Service]
 Type=simple
-User=ec2-user
-WorkingDirectory=/home/ec2-user/aws-lab/05-testpulse/dashboard
-EnvironmentFile=/home/ec2-user/aws-lab/05-testpulse/dashboard/.env
-ExecStart=/home/ec2-user/aws-lab/05-testpulse/dashboard/venv/bin/uvicorn app:app --host 0.0.0.0 --port 8001
 Restart=always
 RestartSec=10
+ExecStartPre=-/usr/bin/docker rm -f testpulse-dashboard
+ExecStart=/usr/bin/docker run --rm --name testpulse-dashboard \
+  -p 8001:8001 \
+  --env-file /home/ec2-user/aws-lab/05-testpulse/dashboard/.env \
+  testpulse-dashboard
+ExecStop=/usr/bin/docker stop testpulse-dashboard
 
 [Install]
 WantedBy=multi-user.target
 EOF
-
 # ---------------------------------------------------------------------------
 # Section 9a: Ingestor Enable + start the service
 # ---------------------------------------------------------------------------

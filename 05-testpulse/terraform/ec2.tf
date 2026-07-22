@@ -19,6 +19,12 @@ resource "aws_instance" "ingestor" {
   db_password = var.DB_PASSWORD
 })
 
+ metadata_options {
+    http_endpoint               = "enabled"
+    http_tokens                 = "required"   # IMDSv2 enforced
+    http_put_response_hop_limit = 2            # containers can reach IMDS
+  }
+
 user_data_replace_on_change = true
 
   tags = {
