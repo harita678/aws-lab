@@ -11,21 +11,22 @@ resource "aws_instance" "ingestor" {
   iam_instance_profile = aws_iam_instance_profile.ec2.name
 
   # Network Association
-  subnet_id              = "subnet-062db854eb6c2a5bd"
-  vpc_security_group_ids = [aws_security_group.web.id]
+  subnet_id                   = aws_subnet.private_1d.id
+  associate_public_ip_address = false #Explicitly no public IP. This is the line that makes the box truly private — even though a private subnet wouldn't auto-assign one, we're explicit.
+  vpc_security_group_ids      = [aws_security_group.web.id]
 
   #User Data - it is available on EC2 instance
- user_data = templatefile("${path.module}/user-data-testpulse.sh.tftpl", {
-  db_password = var.DB_PASSWORD
-})
+  user_data = templatefile("${path.module}/user-data-testpulse.sh.tftpl", {
+    db_password = var.DB_PASSWORD
+  })
 
- metadata_options {
+  metadata_options {
     http_endpoint               = "enabled"
-    http_tokens                 = "required"   # IMDSv2 enforced
-    http_put_response_hop_limit = 2            # containers can reach IMDS
+    http_tokens                 = "required" # IMDSv2 enforced
+    http_put_response_hop_limit = 2          # containers can reach IMDS
   }
 
-user_data_replace_on_change = true
+  user_data_replace_on_change = true
 
   tags = {
     Name        = "harita-testpulse-ingestor"

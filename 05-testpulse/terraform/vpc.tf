@@ -10,7 +10,8 @@ resource "aws_vpc_endpoint" "s3" {
   service_name      = "com.amazonaws.ca-central-1.s3" # the S3 service name
   vpc_endpoint_type = "Gateway"                       # "Gateway"
 
-  route_table_ids = ["rtb-0a6ee008b2ba557be"] # list with your route table ID
+  route_table_ids = ["rtb-0a6ee008b2ba557be",
+  aws_route_table.private.id] # list with your route table ID, as we moved lambda to private subnet it is attached to private route table. VPC endpoints are connected to route table, so we need to connect it to private route table too!!
 
   tags = {
     Name        = "VPC Endpoint Connecting to S3" # e.g., "TestPulse S3 Endpoint"

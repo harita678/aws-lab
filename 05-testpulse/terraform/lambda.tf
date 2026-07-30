@@ -18,9 +18,9 @@ resource "aws_lambda_function" "processor" {
   # VPC config (nested block)
   vpc_config {
     subnet_ids = [
-      "subnet-062db854eb6c2a5bd",
-      "subnet-09aded2e838ab3491",
-      "subnet-0239c5c7454b3ff67"
+      aws_subnet.private_1a.id,
+      aws_subnet.private_1b.id,
+      aws_subnet.private_1d.id
     ]
     security_group_ids = ["sg-0f01497b00f9a0d26"]
   }

@@ -106,6 +106,16 @@ resource "aws_iam_role" "ec2" {
   }
 }
 
+# ======================================
+# Attach AWS Managed policy on EC2 Role - As EC2 is in private subnet we need SSM to do ssh from the local computer. 
+# =======================================
+resource "aws_iam_role_policy_attachment" "ec2_ssm" {
+  role       = aws_iam_role.ec2.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
+}
+
+
+
 # ====================================
 # Attach AWS Inline policy on EC2 Role
 # ====================================
