@@ -9,7 +9,7 @@ resource "aws_db_instance" "testpulse_db" {
     prevent_destroy = true
   }
 
-  identifier        = "harita-testpulse-db"
+  identifier        = "harita-testpulse-db-private"
   engine            = "postgres"
   engine_version    = "18.3"
   instance_class    = "db.t4g.micro"
@@ -26,7 +26,7 @@ resource "aws_db_instance" "testpulse_db" {
 
   vpc_security_group_ids = [aws_security_group.db.id]
 
-  db_subnet_group_name = "default-vpc-0195a8984f6090bc2"
+  db_subnet_group_name = aws_db_subnet_group.private.name
 
   storage_encrypted = true
 
@@ -34,4 +34,24 @@ resource "aws_db_instance" "testpulse_db" {
   copy_tags_to_snapshot = true
   max_allocated_storage = 1000
 
+}
+
+# Creating DB Subnet group which contains private subnets..as my RDS is in private subnet it should use privite subnet group
+# Here i am just creating subnet group (which has private subnets) then in "aws_db_instance" resoucre we will refer it
+
+resource "aws_db_subnet_group" "private" {
+  name = "testpulse-db-private"
+
+  subnet_ids = [
+    aws_subnet.private_1a.id,
+    aws_subnet.private_1b.id,
+    aws_subnet.private_1d.id,
+  ]
+
+  tags = {
+    Name        = "testpulse-db-private"
+    Environment = var.environment
+    ManagedBy   = "Terraform"
+    Project     = "TestPulse"
+  }
 }

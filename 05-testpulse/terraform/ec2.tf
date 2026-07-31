@@ -13,11 +13,16 @@ resource "aws_instance" "ingestor" {
   # Network Association
   subnet_id                   = aws_subnet.private_1d.id
   associate_public_ip_address = false #Explicitly no public IP. This is the line that makes the box truly private — even though a private subnet wouldn't auto-assign one, we're explicit.
-  vpc_security_group_ids      = [aws_security_group.web.id]
+  vpc_security_group_ids      = [aws_security_group.app.id]
 
   #User Data - it is available on EC2 instance
   user_data = templatefile("${path.module}/user-data-testpulse.sh.tftpl", {
+    db_host     = var.DB_HOST
+    db_port     = var.DB_PORT
+    db_name     = var.DB_NAME
+    db_username = var.DB_USERNAME
     db_password = var.DB_PASSWORD
+
   })
 
   metadata_options {

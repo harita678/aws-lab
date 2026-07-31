@@ -79,10 +79,10 @@ chown ec2-user:ec2-user /home/ec2-user/aws-lab/05-testpulse/ingestor/.env
 # ---------------------------------------------------------------------------
 echo "Writing Dashboard .env file..."
 cat > /home/ec2-user/aws-lab/05-testpulse/dashboard/.env << EOF
-DB_HOST=harita-testpulse-db.cdwkuouoeuue.ca-central-1.rds.amazonaws.com
-DB_PORT=5432
-DB_NAME=testpulse_db
-DB_USERNAME=testpulse_admin
+DB_HOST=${db_host}
+DB_PORT=${db_port}
+DB_NAME=${db_name}
+DB_USERNAME=${db_username}
 DB_PASSWORD=${db_password}
 EOF
 chown ec2-user:ec2-user /home/ec2-user/aws-lab/05-testpulse/dashboard/.env

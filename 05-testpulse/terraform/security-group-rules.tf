@@ -12,39 +12,31 @@ resource "aws_vpc_security_group_ingress_rule" "web_http" {
   to_port           = 80
 }
 
-resource "aws_vpc_security_group_ingress_rule" "web_ssh" {
-  security_group_id = aws_security_group.web.id
-  cidr_ipv4         = "76.67.45.97/32"
-  from_port         = 22
-  ip_protocol       = "tcp"
-  to_port           = 22
-  description       = "for ssh - allow only from my laptop"
-}
 
-resource "aws_vpc_security_group_ingress_rule" "web_app_port" {
-  security_group_id = aws_security_group.web.id
-  cidr_ipv4         = "0.0.0.0/0"
-  from_port         = 8000
-  ip_protocol       = "tcp"
-  to_port           = 8000
-}
+# --- APP TIER (2 rules) ---
+# My lambda and EC2 both are in App Tier
+# Meaning that they both are sharing the same SG and that's why they are in same tier
+# As EC2 is not in front(web) and now in app tier, it should accept connection from web tier(ALB)
+# It should accept 8000 and 8001
+# Remeber here that since EC2 and Lambda are sharing the SG, they dont need any rule to accept connection from each other
 
-resource "aws_vpc_security_group_ingress_rule" "web_dashboard_port" {
-  security_group_id = aws_security_group.web.id
-  cidr_ipv4         = "0.0.0.0/0"
-  from_port         = 8001
-  ip_protocol       = "tcp"
-  to_port           = 8001
-  description       = "Dashboard read API"
-}
 
-# --- APP TIER (1 rule) ---
-resource "aws_vpc_security_group_ingress_rule" "app_from_web" {
+resource "aws_vpc_security_group_ingress_rule" "app_from_alb_8000" {
   security_group_id            = aws_security_group.app.id
   from_port                    = 8000
-  ip_protocol                  = "tcp"
   to_port                      = 8000
+  ip_protocol                  = "tcp"
   referenced_security_group_id = aws_security_group.web.id
+  description                  = "ALB to ingestor"
+}
+
+resource "aws_vpc_security_group_ingress_rule" "app_from_alb_8001" {
+  security_group_id            = aws_security_group.app.id
+  from_port                    = 8001
+  to_port                      = 8001
+  ip_protocol                  = "tcp"
+  referenced_security_group_id = aws_security_group.web.id
+  description                  = "ALB to dashboard"
 }
 
 # --- DB TIER (3 rules) ---
@@ -55,14 +47,6 @@ resource "aws_vpc_security_group_ingress_rule" "db_from_app" {
   to_port                      = 5432
   ip_protocol                  = "tcp"
   referenced_security_group_id = aws_security_group.app.id
-}
-#Dashboard (web tier) reads RDS
-resource "aws_vpc_security_group_ingress_rule" "db_from_web" {
-  security_group_id            = aws_security_group.db.id
-  referenced_security_group_id = aws_security_group.web.id
-  from_port                    = 5432
-  ip_protocol                  = "tcp"
-  to_port                      = 5432
 }
 
 resource "aws_vpc_security_group_ingress_rule" "db_from_laptop" {

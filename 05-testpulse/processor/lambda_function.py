@@ -146,6 +146,10 @@ def summarize_tests(test_data):
 
     return test_record
 
+#this is EMF function.. it will create metrics in cloudwatch. 
+#Namespace is a folder
+#dimensions: how you filter and group your metrics
+#put_metrics: actual metrics that we are creating, pass,failed, total
 @metric_scope
 def emit_metrics(test_summary, metrics):
     metrics.set_namespace("TestPulse")

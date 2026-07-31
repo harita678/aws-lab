@@ -39,3 +39,6 @@ crash.log
 
 # Test data sql queries for dashboard (only for local)
 seed.sql
+
+sessionmanager-bundle.zip
+sessionmanager-bundle/
