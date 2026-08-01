@@ -78,9 +78,26 @@ resource "aws_iam_role_policy" "lambda_testpulse" {
     ]
   })
 }
+# ── Let the Lambda role read the DB password secret ──
+resource "aws_iam_role_policy" "lambda_secrets" {
+  name = "testpulse-lambda-secrets-read"
+  role = aws_iam_role.lambda.id
 
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid      = "ReadDBSecret"
+        Effect   = "Allow"
+        Action   = "secretsmanager:GetSecretValue"
+        Resource = aws_secretsmanager_secret.db_password.arn
+      }
+    ]
+  })
+}
+#-------------------------------------------
 #EC2 - IAM Role with trust policy
-
+#-------------------------------------------
 resource "aws_iam_role" "ec2" {
   name = var.ec2_role_name
 
@@ -158,7 +175,23 @@ resource "aws_iam_role_policy" "ec2_inline" {
     ]
   })
 }
+# ── Let the EC2 role (dashboard) read the same secret ──
+resource "aws_iam_role_policy" "ec2_secrets" {
+  name = "testpulse-ec2-secrets-read"
+  role = aws_iam_role.ec2.id
 
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid      = "ReadDBSecret"
+        Effect   = "Allow"
+        Action   = "secretsmanager:GetSecretValue"
+        Resource = aws_secretsmanager_secret.db_password.arn
+      }
+    ]
+  })
+}
 # ====================================
 # Attach EC2 Instance profile
 # ====================================

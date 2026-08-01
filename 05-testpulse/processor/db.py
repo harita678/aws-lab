@@ -1,6 +1,26 @@
 from dotenv import load_dotenv
 import os
 import psycopg2
+import json
+import boto3
+
+#local it will read cred from .env on cloud it will will read password from secret manager
+
+def get_db_password():
+    """
+    Local dev: DB_PASSWORD is in .env → use it directly.
+    Cloud: DB_PASSWORD is absent → fetch from Secrets Manager using DB_SECRET_ARN.
+    """
+    # Local: env var present wins (no AWS call)
+    pwd = os.environ.get("DB_PASSWORD")
+
+    if pwd:
+        return pwd
+    # Cloud: fetch from Secrets Manager
+    secret_arn = os.environ["DB_SECRET_ARN"]
+    client=boto3.client("secretsmanager")
+    response = client.get_secret_value(SecretId=secret_arn)
+    return response["SecretString"]
 
 # Open a connection to RDS using credentials from .env
 def create_db_connection():
@@ -10,7 +30,7 @@ def create_db_connection():
     db_host = os.environ["DB_HOST"]
     db_name = os.environ["DB_NAME"]
     db_username = os.environ["DB_USERNAME"]
-    db_password = os.environ["DB_PASSWORD"]
+    db_password = get_db_password()
     db_port = os.environ["DB_PORT"]
     
     # Creating connection
